@@ -26,7 +26,7 @@ threading.Thread(target=start_web_server, daemon=True).start()
 # ----------------------------------------------------
 # 2. Telegram Bot Logic & MLBB API
 # ----------------------------------------------------
-BOT_TOKEN = "8425441082:AAExkdFsmxL9hRKJP8yaq3..."
+BOT_TOKEN = "8425441082:AAExkdFsmxL9hRKJP8yaq3J9I3FTe8p5p8M"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
