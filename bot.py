@@ -21,7 +21,7 @@ def start_web_server():
 threading.Thread(target=start_web_server, daemon=True).start()
 
 # ----------------------------------------------------
-# 2. Telegram Bot Logic & MLBB API
+# 2. Telegram Bot Logic
 # ----------------------------------------------------
 BOT_TOKEN = "8425441082:AAExkdFsmxL9hRKJP8yaq3J9I3FTe8p5p8M"
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -42,44 +42,53 @@ def check_mlbb_id(message):
             
             bot.reply_to(message, "ခဏစောင့်ပေးပါ၊ အချက်အလက်များ စစ်ဆေးနေပါသည်...")
             
-            url = f"https://api.vytal.id/mlbb?id={user_id}&zone={zone_id}"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            # API 1
+            url1 = f"https://api.zoneid.org/api/mlbb?id={user_id}&zone={zone_id}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
             
-            response = requests.get(url, headers=headers, timeout=12)
+            success = False
+            username = None
             
-            if response.status_code == 200:
+            try:
+                res1 = requests.get(url1, headers=headers, timeout=8)
+                if res1.status_code == 200:
+                    data1 = res1.json()
+                    if isinstance(data1, dict):
+                        username = data1.get("username") or data1.get("nickname") or data1.get("name")
+                        if username:
+                            success = True
+            except:
+                pass
+
+            # API 2 (Backup)
+            if not success:
                 try:
-                    res_json = response.json()
-                    
-                    # API result စာသားဖွဲ့စည်းခြင်း
-                    msg = f"===== MLBB ID Details =====\n\n"
-                    msg += f"ID : {user_id}\n"
-                    msg += f"Zone : {zone_id}\n"
-                    
-                    if isinstance(res_json, dict):
-                        # data သို့မဟုတ် result key ပါမပါ စစ်ဆေးခြင်း
-                        info = res_json.get("data", res_json)
-                        if isinstance(info, dict):
-                            for k, v in info.items():
-                                msg += f"{k.capitalize()} : {v}\n"
-                        else:
-                            msg += f"Result : {info}\n"
-                    else:
-                        msg += f"Result : {res_json}\n"
-                        
-                    bot.reply_to(message, msg)
-                except Exception:
-                    # JSON မဟုတ်ဘဲ Text ပဲပြန်လာရင်လည်း တိုက်ရိုက်ပြပေးမည်
-                    bot.reply_to(message, f"===== MLBB ID Details =====\n\n{response.text}")
+                    url2 = f"https://order-api.codashop.com/initPayment.action"
+                    # Backup API Call
+                    url_alt = f"https://mobile-legends-api.vercel.app/api/mlbb?id={user_id}&zone={zone_id}"
+                    res2 = requests.get(url_alt, headers=headers, timeout=8)
+                    if res2.status_code == 200:
+                        data2 = res2.json()
+                        if isinstance(data2, dict):
+                            username = data2.get("username") or data2.get("name")
+                            if username:
+                                success = True
+                except:
+                    pass
+
+            if success and username:
+                msg = f"===== MLBB ID Details =====\n\n"
+                msg += f"ID : {user_id}\n"
+                msg += f"Zone : {zone_id}\n"
+                msg += f"Username : {username}\n"
+                bot.reply_to(message, msg)
             else:
-                bot.reply_to(message, f"API စာဗာမှ တုံ့ပြန်မှု မရရှိပါ (Status Code: {response.status_code})။ ID နှင့် Zone ID မှန်မမှန် ပြန်စစ်ပါ။")
-                
-        except requests.exceptions.Timeout:
-            bot.reply_to(message, "API စာဗာမှ တုံ့ပြန်ချိန် ကြာမြင့်နေပါသဖြင့် နောက်မှ ပြန်စမ်းပေးပါ။")
+                bot.reply_to(message, "အချက်အလက် ရှာမတွေ့ပါ။ ID သို့မဟုတ် Zone ID မှားနေနိုင်ပါသည် သို့မဟုတ် API စာဗာ ငြိမ်နေပါသည်။")
+
         except Exception as e:
-            bot.reply_to(message, f"အမှားဖြစ်ပေါ်ခဲ့သည်: {str(e)}")
+            bot.reply_to(message, "စနစ်ပိုင်းဆိုင်ရာ အမှားတစ်ခု ဖြစ်ပေါ်နေပါသည်။")
     else:
         bot.reply_to(message, "ကျေးဇူးပြု၍ `ID(ZoneID)` ပုံစံဖြင့် ရိုက်ပို့ပေးပါ။\nဥပမာ - `123456789(9876)`")
 
-# Bot Polling Run ခြင်း
-bot.infinity_polling(timeout=10, long_polling_timeout=5)
+# Bot Polling Run ခြင်း (Conflict error မတက်အောင် skip_pending=True ပါဝင်သည်)
+bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
