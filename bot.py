@@ -49,7 +49,7 @@ threading.Thread(
 
 # =========================================================
 # IMPORTANT:
-# ဒီနေရာမှာ မင်းရဲ့ BotFather TOKEN ကို ထည့်ပါ
+"8425441082:AAFA0BOy5ln7jueAr2tUnCCGTRwlF_yJO-g"
 # =========================================================
 
 BOT_TOKEN = "8425441082:AAFA0BOy5ln7jueAr2tUnCCGTRwlF_yJO-g"
