@@ -27,7 +27,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 import requests
 import telebot
 
-BOT_TOKEN = "သင့်ရဲ့_BOT_TOKEN"
+BOT_TOKEN = "8425441082:AAExkdFsmxL9hRKJP8yaq3J9I3FTe8p5p8M"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # ... (သင့်ရဲ့ ကျန်တဲ့ MLBB ID စစ်တဲ့ Code များ) ...
