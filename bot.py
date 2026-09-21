@@ -52,10 +52,10 @@ threading.Thread(
 # ဒီနေရာမှာ မင်းရဲ့ BotFather TOKEN ကို ထည့်ပါ
 # =========================================================
 
-BOT_TOKEN = "PASTE_YOUR_BOTFATHER_TOKEN_HERE"
+BOT_TOKEN = "8425441082:AAFA0BOy5ln7jueAr2tUnCCGTRwlF_yJO-g"
 
 
-if BOT_TOKEN == "PASTE_YOUR_BOTFATHER_TOKEN_HERE":
+if BOT_TOKEN == "8425441082:AAFA0BOy5ln7jueAr2tUnCCGTRwlF_yJO-g":
     raise ValueError(
         "Please put your Telegram BotFather token in BOT_TOKEN."
     )
