@@ -43,31 +43,41 @@ def check_mlbb_id(message):
             bot.reply_to(message, "ခဏစောင့်ပေးပါ၊ အချက်အလက်များ စစ်ဆေးနေပါသည်...")
             
             url = f"https://api.vytal.id/mlbb?id={user_id}&zone={zone_id}"
-            response = requests.get(url, timeout=10)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            
+            response = requests.get(url, headers=headers, timeout=12)
             
             if response.status_code == 200:
-                data = response.json()
-                
-                # API မှ ပြန်လာသော အချက်အလက်များကို စာသားအဖြစ် ပြောင်းလဲခြင်း
-                if isinstance(data, dict):
-                    username = data.get("username", data.get("name", "မသိပါ"))
-                    msg = f"===== MLBB ID Details =====\n\n"
-                    msg += f"UID : {user_id} ({zone_id})\n"
-                    msg += f"Name : {username}\n"
+                try:
+                    res_json = response.json()
                     
-                    # ကျန်ရှိသော အချက်အလက်များကို ထုတ်ပြခြင်း
-                    for key, val in data.items():
-                        if key not in ["username", "name", "id", "zone"]:
-                            msg += f"{key} : {val}\n"
-                else:
-                    msg = f"===== MLBB ID Details =====\n\n{data}"
-                
-                bot.reply_to(message, msg)
+                    # API result စာသားဖွဲ့စည်းခြင်း
+                    msg = f"===== MLBB ID Details =====\n\n"
+                    msg += f"ID : {user_id}\n"
+                    msg += f"Zone : {zone_id}\n"
+                    
+                    if isinstance(res_json, dict):
+                        # data သို့မဟုတ် result key ပါမပါ စစ်ဆေးခြင်း
+                        info = res_json.get("data", res_json)
+                        if isinstance(info, dict):
+                            for k, v in info.items():
+                                msg += f"{k.capitalize()} : {v}\n"
+                        else:
+                            msg += f"Result : {info}\n"
+                    else:
+                        msg += f"Result : {res_json}\n"
+                        
+                    bot.reply_to(message, msg)
+                except Exception:
+                    # JSON မဟုတ်ဘဲ Text ပဲပြန်လာရင်လည်း တိုက်ရိုက်ပြပေးမည်
+                    bot.reply_to(message, f"===== MLBB ID Details =====\n\n{response.text}")
             else:
-                bot.reply_to(message, "အချက်အလက် ရှာမတွေ့ပါ။ ID နှင့် Zone ID မှန်မမှန် ပြန်စစ်ပါ။")
+                bot.reply_to(message, f"API စာဗာမှ တုံ့ပြန်မှု မရရှိပါ (Status Code: {response.status_code})။ ID နှင့် Zone ID မှန်မမှန် ပြန်စစ်ပါ။")
                 
+        except requests.exceptions.Timeout:
+            bot.reply_to(message, "API စာဗာမှ တုံ့ပြန်ချိန် ကြာမြင့်နေပါသဖြင့် နောက်မှ ပြန်စမ်းပေးပါ။")
         except Exception as e:
-            bot.reply_to(message, "အချက်အလက် ရယူရာတွင် အမှားတစ်ခု ဖြစ်ပေါ်နေပါသည်။ ID နှင့် Zone ID မှန်အောင် ရိုက်ပေးပါ။")
+            bot.reply_to(message, f"အမှားဖြစ်ပေါ်ခဲ့သည်: {str(e)}")
     else:
         bot.reply_to(message, "ကျေးဇူးပြု၍ `ID(ZoneID)` ပုံစံဖြင့် ရိုက်ပို့ပေးပါ။\nဥပမာ - `123456789(9876)`")
 
