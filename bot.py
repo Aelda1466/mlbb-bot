@@ -37,37 +37,36 @@ def get_mlbb_info(user_id, zone_id):
         'Accept': 'application/json'
     }
     
-    # API Endpoint 1: ZoneID API
+    # API 1: ZoneID API (Nested Data Structure Support)
     try:
         url1 = f"https://api.zoneid.org/api/mlbb?id={user_id}&zone={zone_id}"
         r = requests.get(url1, headers=headers, timeout=6)
-        if r.status_code == 200 and isinstance(r.json(), dict):
-            name = r.json().get("username") or r.json().get("nickname") or r.json().get("name")
-            if name: return name
+        if r.status_code == 200:
+            res_json = r.json()
+            # JSON format အသီးသီးကို စစ်ဆေးခြင်း
+            if isinstance(res_json, dict):
+                # တိုက်ရိုက် သို့မဟုတ် data object ထဲတွင် ရှိမရှိ စစ်ဆေးခြင်း
+                data_obj = res_json.get("data") if isinstance(res_json.get("data"), dict) else res_json
+                name = data_obj.get("username") or data_obj.get("nickname") or data_obj.get("name") or data_obj.get("userName")
+                if name: return name
     except Exception:
         pass
 
-    # API Endpoint 2: Mobile Legends Vercel API
+    # API 2: Vercel API
     try:
         url2 = f"https://mobile-legends-api.vercel.app/api/mlbb?id={user_id}&zone={zone_id}"
         r = requests.get(url2, headers=headers, timeout=6)
-        if r.status_code == 200 and isinstance(r.json(), dict):
-            name = r.json().get("username") or r.json().get("nickname") or r.json().get("name")
-            if name: return name
-    except Exception:
-        pass
-
-    # API Endpoint 3: Chiky Helper Endpoint
-    try:
-        url3 = f"https://api.chiky.net/api/mlbb?id={user_id}&zone={zone_id}"
-        r = requests.get(url3, headers=headers, timeout=6)
-        if r.status_code == 200 and isinstance(r.json(), dict):
-            name = r.json().get("username") or r.json().get("nickname") or r.json().get("name")
-            if name: return name
+        if r.status_code == 200:
+            res_json = r.json()
+            if isinstance(res_json, dict):
+                data_obj = res_json.get("data") if isinstance(res_json.get("data"), dict) else res_json
+                name = data_obj.get("username") or data_obj.get("nickname") or data_obj.get("name") or data_obj.get("userName")
+                if name: return name
     except Exception:
         pass
 
     return None
+            
 
 # ----------------------------------------------------
 # 4. Telegram Bot Message Handlers
