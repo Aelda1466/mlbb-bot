@@ -27,14 +27,61 @@ threading.Thread(target=start_web_server, daemon=True).start()
 BOT_TOKEN = "8425441082:AAFA0BOy5ln7jueAr2tUnCCGTRwlF_yJO-g"
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ----------------------------------------------------
-# 3. Conflict / Webhook Error ကာကွယ်ရေး စနစ်
-# ----------------------------------------------------
 try:
     bot.remove_webhook()
-    time.sleep(2) # Server အဟောင်း ပြုတ်သွားစေရန် ၂ စက္ကန့် စောင့်ခြင်း
+    time.sleep(2)
 except Exception:
     pass
+
+# ----------------------------------------------------
+# 3. Multiple API Call Helper Function
+# ----------------------------------------------------
+def fetch_mlbb_profile(user_id, zone_id):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+    }
+    
+    # Endpoint 1: ZoneID API
+    try:
+        url1 = f"https://api.zoneid.org/api/mlbb?id={user_id}&zone={zone_id}"
+        res1 = requests.get(url1, headers=headers, timeout=6)
+        if res1.status_code == 200:
+            data = res1.json()
+            if isinstance(data, dict):
+                name = data.get("username") or data.get("nickname") or data.get("name")
+                if name:
+                    return name
+    except Exception:
+        pass
+
+    # Endpoint 2: Mobile Legends Vercel API
+    try:
+        url2 = f"https://mobile-legends-api.vercel.app/api/mlbb?id={user_id}&zone={zone_id}"
+        res2 = requests.get(url2, headers=headers, timeout=6)
+        if res2.status_code == 200:
+            data = res2.json()
+            if isinstance(data, dict):
+                name = data.get("username") or data.get("nickname") or data.get("name")
+                if name:
+                    return name
+    except Exception:
+        pass
+
+    # Endpoint 3: Codashop Helper Endpoint
+    try:
+        url3 = f"https://api.chiky.net/api/mlbb?id={user_id}&zone={zone_id}"
+        res3 = requests.get(url3, headers=headers, timeout=6)
+        if res3.status_code == 200:
+            data = res3.json()
+            if isinstance(data, dict):
+                name = data.get("username") or data.get("nickname") or data.get("name")
+                if name:
+                    return name
+    except Exception:
+        pass
+
+    return None
 
 # ----------------------------------------------------
 # 4. Bot Handlers
@@ -55,24 +102,16 @@ def check_mlbb_id(message):
             
             bot.reply_to(message, "ခဏစောင့်ပေးပါ၊ အချက်အလက်များ စစ်ဆေးနေပါသည်...")
             
-            # အလုပ်လုပ်သော API ဖြင့် စစ်ဆေးခြင်း
-            url = f"https://api.zoneid.org/api/mlbb?id={user_id}&zone={zone_id}"
-            headers = {'User-Agent': 'Mozilla/5.0'}
+            # API အသီးသီးမှ Username ရှာဖွေခြင်း
+            username = fetch_mlbb_profile(user_id, zone_id)
             
-            res = requests.get(url, headers=headers, timeout=10)
-            
-            if res.status_code == 200:
-                data = res.json()
-                if isinstance(data, dict):
-                    username = data.get("username") or data.get("nickname") or data.get("name") or "မသိပါ"
-                    msg = f"===== MLBB ID Details =====\n\nID : {user_id}\nZone : {zone_id}\nUsername : {username}"
-                    bot.reply_to(message, msg)
-                else:
-                    bot.reply_to(message, f"===== MLBB ID Details =====\n\n{data}")
+            if username:
+                msg = f"===== MLBB ID Details =====\n\nID : {user_id}\nZone : {zone_id}\nUsername : {username}"
+                bot.reply_to(message, msg)
             else:
-                bot.reply_to(message, "အချက်အလက် ရှာမတွေ့ပါ။ ID သို့မဟုတ် Zone ID မှားယွင်းနေပါသည်။")
+                bot.reply_to(message, "အချက်အလက် ရှာမတွေ့ပါ။ ID သို့မဟုတ် Zone ID မှားယွင်းနေပါသည် သို့မဟုတ် API စာဗာ ငြိမ်နေပါသည်။")
                 
-        except Exception:
+        except Exception as e:
             bot.reply_to(message, "အချက်အလက် ရယူရာတွင် အမှားတစ်ခု ဖြစ်ပေါ်နေပါသည်။ ခဏနေမှ ပြန်စမ်းပေးပါ။")
     else:
         bot.reply_to(message, "ကျေးဇူးပြု၍ `ID(ZoneID)` ပုံစံဖြင့် ရိုက်ပို့ပေးပါ။\nဥပမာ - `123456789(9876)`")
