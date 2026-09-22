@@ -109,3 +109,8 @@ if __name__ == "__main__":
         pass
         
     bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
+# Webhook အဟောင်းကို ဖျက်ရန်
+bot.remove_webhook()
+
+# Bot ကို စတင် run ရန်
+bot.infinity_polling(skip_pending=True)
