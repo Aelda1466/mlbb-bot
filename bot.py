@@ -16,7 +16,7 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
 # Temporary nickname API.
 # We will replace/extend this with SmileOne later.
-NICKNAME_API = "https://www.bybanana.my/api/v1/nickname"
+NICKNAME_API = "https://bybanana.my/api/v1/nickname"
 
 
 # =========================================================
