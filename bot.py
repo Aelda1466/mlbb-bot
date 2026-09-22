@@ -3,79 +3,415 @@ import re
 import requests
 import telebot
 
-TOKEN = os.environ.get('BOT_TOKEN')
-bot = telebot.TeleBot(TOKEN)
+# =========================================================
+# CONFIG
+# =========================================================
 
-def get_mlbb_name(user_id, zone_id):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'application/json'
-    }
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-    # API 1: Direct Working Endpoint
-    try:
-        url = f"https://api.mobilelegends.com/v1/player/info?id={user_id}&zone={zone_id}"
-        r = requests.get(url, headers=headers, timeout=6)
-        if r.status_code == 200:
-            data = r.json()
-            name = data.get("username") or data.get("data", {}).get("username")
-            if name:
-                return name
-    except Exception:
-        pass
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is not set in Railway Variables.")
 
-    # API 2: Fallback API
-    try:
-        url2 = f"https://api.vhtg.xyz/api/game/mlbb?id={user_id}&zone={zone_id}"
-        r2 = requests.get(url2, headers=headers, timeout=6)
-        if r2.status_code == 200:
-            data2 = r2.json()
-            res = data2.get("data", {}) if isinstance(data2, dict) else {}
-            name = res.get("username") or res.get("nickname") or data2.get("username")
-            if name:
-                return name
-    except Exception:
-        pass
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
-    return None
+# Temporary nickname API.
+# We will replace/extend this with SmileOne later.
+NICKNAME_API = "https://www.bybanana.my/api/v1/nickname"
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    welcome_text = (
-        "မင်္ဂလာပါ! MLBB ID စစ်ဆေးရန်အတွက်\n"
-        "`ID(ZoneID)` ပုံစံဖြင့် ပို့ပေးပါ။\n\n"
-        "ဥပမာ - `123456789(9971)`"
+
+# =========================================================
+# PRODUCT SETTINGS
+# =========================================================
+# These are PLACEHOLDERS for Step 2.
+# Later SmileOne API will determine the real availability.
+
+DOUBLE_DIAMONDS = [
+    ("50 + 50", False),
+    ("150 + 150", False),
+    ("250 + 250", False),
+    ("500 + 500", False),
+]
+
+PASS_BUNDLES = [
+    ("Weekly Diamond Pass", False),
+    ("Weekly Elite Bundle", False),
+    ("Monthly Epic Bundle", False),
+]
+
+
+# =========================================================
+# START COMMAND
+# =========================================================
+
+@bot.message_handler(commands=["start"])
+def start_command(message):
+
+    text = (
+        "💜 <b>MLBB ID Checker</b>\n\n"
+        "MLBB UID + Zone ID စစ်ရန်\n"
+        "<code>UID(ZoneID)</code> ပုံစံနဲ့ ပို့ပေးပါ။\n\n"
+        "ဥပမာ:\n"
+        "<code>954255581(12790)</code>"
     )
-    bot.reply_to(message, welcome_text, parse_mode='Markdown')
 
-@bot.message_handler(func=lambda message: True)
-def handle_id_check(message):
-    text = message.text.strip()
-    
-    match = re.match(r'^(\d+)\s*\(\s*(\d+)\s*\)$', text)
+    bot.reply_to(message, text)
+
+
+# =========================================================
+# HELP COMMAND
+# =========================================================
+
+@bot.message_handler(commands=["help"])
+def help_command(message):
+
+    text = (
+        "💜 <b>အသုံးပြုနည်း</b>\n\n"
+        "MLBB ID စစ်ရန်:\n"
+        "<code>UID(ZoneID)</code>\n\n"
+        "ဥပမာ:\n"
+        "<code>954255581(12790)</code>\n\n"
+        "Bot က UID, Zone ID နဲ့ Account Name ကို စစ်ပေးပါမယ်။"
+    )
+
+    bot.reply_to(message, text)
+
+
+# =========================================================
+# PARSE UID + ZONE
+# =========================================================
+
+def parse_mlbb_id(text):
+
+    text = text.strip()
+
+    # Accept:
+    # 954255581(12790)
+    # 954255581 (12790)
+
+    pattern = r"^(\d+)\s*\(\s*(\d+)\s*\)$"
+
+    match = re.match(pattern, text)
+
     if not match:
-        bot.reply_to(message, "⚠️ ပုံစံ မှားယွင်းနေပါသည်။ `123456789(9971)` ပုံစံအတိုင်း ပို့ပေးပါ။", parse_mode='Markdown')
-        return
+        return None, None
 
     user_id = match.group(1)
     zone_id = match.group(2)
 
-    wait_msg = bot.reply_to(message, f"⏳ `{user_id}({zone_id})` အချက်အလက် စစ်ဆေးနေပါသည်...", parse_mode='Markdown')
+    return user_id, zone_id
 
-    player_name = get_mlbb_name(user_id, zone_id)
 
-    if player_name:
-        result_text = (
-            f"===== MLBB ID Details =====\n\n"
-            f"🆔 **UID**    : `{user_id} ({zone_id})`\n"
-            f"👤 **Name**  : `{player_name}`\n\n"
-            f"✅ **Account Status**: Verified"
+# =========================================================
+# CHECK NICKNAME
+# =========================================================
+
+def check_nickname(user_id, zone_id):
+
+    payload = {
+        "code": "mlbb",
+        "id": user_id,
+        "zone": zone_id
+    }
+
+    try:
+
+        response = requests.post(
+            NICKNAME_API,
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0"
+            },
+            timeout=15
         )
-    else:
-        result_text = f"❌ `{user_id}({zone_id})`\nအချက်အလက် ရှာမတွေ့ပါ။ ID သို့မဟုတ် Zone ID မှားယွင်းနေပါသည်။"
 
-    bot.edit_message_text(result_text, chat_id=wait_msg.chat.id, message_id=wait_msg.message_id, parse_mode='Markdown')
+        if response.status_code != 200:
+            return None, f"HTTP {response.status_code}"
 
-if __name__ == '__main__':
-    bot.remove_webhook()
-    bot.infinity_polling(skip_pending=True)
+        try:
+            data = response.json()
+        except ValueError:
+            return None, "Invalid JSON response"
+
+        return data, None
+
+    except requests.exceptions.Timeout:
+        return None, "Request timeout"
+
+    except requests.exceptions.ConnectionError:
+        return None, "Connection error"
+
+    except requests.exceptions.RequestException as e:
+        return None, str(e)
+
+    except Exception as e:
+        return None, str(e)
+
+
+# =========================================================
+# EXTRACT NAME FROM API RESPONSE
+# =========================================================
+
+def extract_nickname(data):
+
+    if not isinstance(data, dict):
+        return None
+
+    # Possible direct fields
+    possible_names = [
+        "nickname",
+        "username",
+        "name",
+        "player_name",
+        "playerName"
+    ]
+
+    for key in possible_names:
+
+        value = data.get(key)
+
+        if value:
+            return str(value)
+
+    # Possible nested "data"
+    nested = data.get("data")
+
+    if isinstance(nested, dict):
+
+        for key in possible_names:
+
+            value = nested.get(key)
+
+            if value:
+                return str(value)
+
+    # Possible nested "result"
+    result = data.get("result")
+
+    if isinstance(result, dict):
+
+        for key in possible_names:
+
+            value = result.get(key)
+
+            if value:
+                return str(value)
+
+    return None
+
+
+# =========================================================
+# EXTRACT REGION
+# =========================================================
+
+def extract_region(data):
+
+    if not isinstance(data, dict):
+        return None
+
+    possible_regions = [
+        "region",
+        "country",
+        "country_name",
+        "countryName"
+    ]
+
+    for key in possible_regions:
+
+        value = data.get(key)
+
+        if value:
+            return str(value)
+
+    nested = data.get("data")
+
+    if isinstance(nested, dict):
+
+        for key in possible_regions:
+
+            value = nested.get(key)
+
+            if value:
+                return str(value)
+
+    return None
+
+
+# =========================================================
+# FORMAT AVAILABILITY
+# =========================================================
+
+def availability_text(available):
+
+    if available:
+        return "AVAILABLE ✅"
+
+    return "NOT AVAILABLE ❌"
+
+
+def build_product_section():
+
+    text = ""
+
+    text += "xxxx Double Diamonds xxxx\n\n"
+
+    for product_name, available in DOUBLE_DIAMONDS:
+
+        text += (
+            f"{product_name}: "
+            f"{availability_text(available)}\n"
+        )
+
+    text += "\n"
+
+    text += "xxxx Pass & Bundle xxxxx\n\n"
+
+    for product_name, available in PASS_BUNDLES:
+
+        text += (
+            f"{product_name} : "
+            f"{availability_text(available)}\n"
+        )
+
+    return text
+
+
+# =========================================================
+# BUILD FINAL RESULT
+# =========================================================
+
+def build_result(user_id, zone_id, nickname, region):
+
+    if not nickname:
+        nickname = "Unknown"
+
+    if not region:
+        region = "Unknown"
+
+    text = (
+        "===== MLBB ID Details =====\n\n"
+        f"UID : {user_id} ({zone_id})\n"
+        f"Name : {nickname}\n"
+        f"Region : {region}\n\n"
+        f"{build_product_section()}"
+    )
+
+    return text
+
+
+# =========================================================
+# HANDLE ALL NORMAL MESSAGES
+# =========================================================
+
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+
+    text = message.text.strip()
+
+    user_id, zone_id = parse_mlbb_id(text)
+
+    # -----------------------------------------------------
+    # Invalid format
+    # -----------------------------------------------------
+
+    if not user_id or not zone_id:
+
+        bot.reply_to(
+            message,
+            "❌ Format မှားနေပါတယ်။\n\n"
+            "ဒီလိုပုံစံနဲ့ ပို့ပေးပါ:\n"
+            "<code>954255581(12790)</code>"
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # Processing message
+    # -----------------------------------------------------
+
+    processing = bot.reply_to(
+        message,
+        "🔎 <b>MLBB Account စစ်ဆေးနေပါတယ်...</b>\n\n"
+        "ခဏစောင့်ပေးပါ 💜"
+    )
+
+    # -----------------------------------------------------
+    # API REQUEST
+    # -----------------------------------------------------
+
+    data, error = check_nickname(user_id, zone_id)
+
+    # -----------------------------------------------------
+    # API ERROR
+    # -----------------------------------------------------
+
+    if error:
+
+        bot.edit_message_text(
+            "❌ <b>Account စစ်ဆေးလို့မရပါ။</b>\n\n"
+            f"Error: <code>{error}</code>\n\n"
+            "ခဏနေပြီး ပြန်စမ်းကြည့်ပါ။",
+            chat_id=processing.chat.id,
+            message_id=processing.message_id
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # GET NICKNAME
+    # -----------------------------------------------------
+
+    nickname = extract_nickname(data)
+
+    region = extract_region(data)
+
+    # -----------------------------------------------------
+    # ACCOUNT NOT FOUND
+    # -----------------------------------------------------
+
+    if not nickname:
+
+        bot.edit_message_text(
+            "❌ <b>MLBB Account မတွေ့ပါ။</b>\n\n"
+            f"UID : <code>{user_id}</code>\n"
+            f"Zone : <code>{zone_id}</code>\n\n"
+            "UID / Zone ID မှန်မမှန် ပြန်စစ်ပေးပါ။",
+            chat_id=processing.chat.id,
+            message_id=processing.message_id
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # FINAL RESULT
+    # -----------------------------------------------------
+
+    result = build_result(
+        user_id,
+        zone_id,
+        nickname,
+        region
+    )
+
+    bot.edit_message_text(
+        result,
+        chat_id=processing.chat.id,
+        message_id=processing.message_id
+    )
+
+
+# =========================================================
+# START BOT
+# =========================================================
+
+print("===================================")
+print("MLBB Telegram Bot is starting...")
+print("===================================")
+
+bot.remove_webhook()
+
+bot.infinity_polling(
+    timeout=30,
+    long_polling_timeout=30,
+    skip_pending=True
+)
