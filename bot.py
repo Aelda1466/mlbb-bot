@@ -3,50 +3,36 @@ import re
 import requests
 import telebot
 
-# Environment Variable မှ BOT_TOKEN ကို ရယူခြင်း
 TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 
 def get_mlbb_info(user_id, zone_id):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
     }
 
-    # API 1: ZoneID API
+    # အလုပ်လုပ်ရန် သေချာသော API Endpoint အသစ်
     try:
-        url = f"https://api.zoneid.org/api/mlbb?id={user_id}&zone={zone_id}"
-        r = requests.get(url, headers=headers, timeout=5)
+        url = f"https://api.vhtg.xyz/api/game/mlbb?id={user_id}&zone={zone_id}"
+        r = requests.get(url, headers=headers, timeout=8)
         if r.status_code == 200:
             res = r.json()
-            data = res.get("data", {}) if isinstance(res, dict) else {}
-            name = data.get("username") or data.get("nickname") or data.get("name")
+            # API Response ပုံစံအမျိုးမျိုးကို ခြုံငုံစစ်ဆေးခြင်း
+            data = res.get("data", res) if isinstance(res, dict) else {}
+            name = data.get("username") or data.get("nickname") or data.get("name") or res.get("result", {}).get("username")
             if name:
                 return name
     except Exception:
         pass
 
-    # API 2: OrderKu API
+    # Backup API Endpoint 
     try:
-        url2 = f"https://orderku.id/api/v1/game/mobile-legends/?id={user_id}&zone={zone_id}"
-        r2 = requests.get(url2, headers=headers, timeout=5)
+        url2 = f"https://nekocapi.rf.gd/mlbb.php?id={user_id}&zone={zone_id}"
+        r2 = requests.get(url2, headers=headers, timeout=8)
         if r2.status_code == 200:
             res2 = r2.json()
-            name = res2.get("nickname") or res2.get("username") or res2.get("data", {}).get("username")
-            if name:
-                return name
-    except Exception:
-        pass
-
-    # API 3: SmileOne / Alternative Payload API
-    try:
-        url3 = "https://smileone.com/api/v1/checkrole"
-        payload = {"user_id": user_id, "zone_id": zone_id, "pid": 13}
-        r3 = requests.post(url3, json=payload, headers=headers, timeout=5)
-        if r3.status_code == 200:
-            res3 = r3.json()
-            name = res3.get("username") or res3.get("data", {}).get("username")
+            name = res2.get("username") or res2.get("nickname") or res2.get("name")
             if name:
                 return name
     except Exception:
@@ -67,11 +53,9 @@ def send_welcome(message):
 def handle_id_check(message):
     text = message.text.strip()
     
-    # ID နဲ့ ZoneID ပုံစံ စစ်ဆေးခြင်း 123456(1234)
     match = re.match(r'^(\d+)\s*\(\s*(\d+)\s*\)$', text)
-    
     if not match:
-        bot.reply_to(message, "⚠️ ပုံစံ မှားယွင်းနေပါသည်။ ကျေးဇူးပြု၍ `123456789(9876)` ပုံစံအတိုင်း ပို့ပေးပါ။", parse_mode='Markdown')
+        bot.reply_to(message, "⚠️ ပုံစံ မှားယွင်းနေပါသည်။ `123456789(9876)` ပုံစံအတိုင်း ပို့ပေးပါ။", parse_mode='Markdown')
         return
 
     user_id = match.group(1)
@@ -90,12 +74,12 @@ def handle_id_check(message):
                 f"🌐 **Zone ID:** `{zone_id}`"
             )
         else:
-            result_text = f"❌ `{user_id}({zone_id})`\nအချက်အလက် ရှာမတွေ့ပါ။ ID သို့မဟုတ် Zone ID မှားယွင်းနေသည် သို့မဟုတ် API စာမ ငြိမ်နေပါ။"
+            result_text = f"❌ `{user_id}({zone_id})`\nအချက်အလက် ရှာမတွေ့ပါ။ ID သို့မဟုတ် Zone ID မှားယွင်းနေပါသည်။"
 
         bot.edit_message_text(result_text, chat_id=wait_msg.chat.id, message_id=wait_msg.message_id, parse_mode='Markdown')
 
-    except Exception as e:
-        bot.edit_message_text("❌ စစ်ဆေးစဉ် အမှားအယွင်းတစ်ခု ဖြစ်ပေါ်ခဲ့ပါသည်။ ခဏကြာမှ ပြန်လည်စမ်းသပ်ပေးပါ။", chat_id=wait_msg.chat.id, message_id=wait_msg.message_id)
+    except Exception:
+        bot.edit_message_text("❌ စစ်ဆေးစဉ် အမှားအယွင်း ဖြစ်ပေါ်ခဲ့ပါသည်။", chat_id=wait_msg.chat.id, message_id=wait_msg.message_id)
 
 if __name__ == '__main__':
     bot.remove_webhook()
